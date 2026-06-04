@@ -3,11 +3,15 @@ import uuid
 import shutil
 import subprocess
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from processor import SignWaveProcessor
+from database import get_db, SessionLocal, User as DBUser, Job as DBJob
+from auth import get_password_hash, verify_password, create_access_token, decode_access_token
 
 app = FastAPI(title="SignWave AI Backend")
 processor = SignWaveProcessor()
@@ -27,23 +31,78 @@ PROCESSED_DIR = "processed"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-class ProcessingJob(BaseModel):
-    id: str
-    status: str
-    progress: int
-    transcript: Optional[str] = None
-    captions: Optional[List[dict]] = None
-    video_url: Optional[str] = None
-    exported_url: Optional[str] = None
+# Pydantic Schemas
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    full_name: str
 
-jobs = {}
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+# Dependency to get current user
+async def get_current_user(token: str, db: Session = Depends(get_db)):
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    email: str = payload.get("sub")
+    user = db.query(DBUser).filter(DBUser.email == email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
 
 @app.get("/")
 async def root():
     return {"message": "SignWave AI API is running"}
 
+# Auth Endpoints
+@app.post("/register", response_model=Token)
+async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    existing_user = db.query(DBUser).filter(DBUser.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_pass = get_password_hash(user_data.password)
+    new_user = DBUser(email=user_data.email, hashed_password=hashed_pass, full_name=user_data.full_name)
+    db.add(new_user)
+    db.commit()
+    
+    token = create_access_token(data={"sub": new_user.email})
+    return {"access_token": token, "token_type": "bearer"}
+
+@app.post("/login", response_model=Token)
+async def login(req: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(DBUser).filter(DBUser.email == req.email).first()
+    if not user or not verify_password(req.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_access_token(data={"sub": user.email})
+    return {"access_token": token, "token_type": "bearer"}
+
+# Secured Endpoints
+@app.get("/jobs", response_model=List[dict])
+async def list_jobs(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    return [
+        {"id": j.id, "status": j.status, "progress": j.progress, "date": j.created_at.strftime("%Y-%m-%d")} 
+        for j in current_user.projects
+    ]
+
 @app.post("/upload")
-async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_video(
+    background_tasks: BackgroundTasks, 
+    file: UploadFile = File(...),
+    token: str = None, # Simplified for demo, should be Header
+    db: Session = Depends(get_db)
+):
+    # In a real app, use Depends(get_current_user) but for easier testing from frontend:
+    user = await get_current_user(token, db) if token else None
+    if not user: raise HTTPException(401)
+
     job_id = str(uuid.uuid4())
     file_extension = os.path.splitext(file.filename)[1]
     file_path = os.path.join(UPLOAD_DIR, f"{job_id}{file_extension}")
@@ -51,100 +110,68 @@ async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = Fil
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    jobs[job_id] = ProcessingJob(
+    new_job = DBJob(
         id=job_id, 
         status="queued", 
-        progress=0,
+        progress=0, 
+        owner_id=user.id,
         video_url=f"http://localhost:8000/files/{job_id}{file_extension}"
     )
+    db.add(new_job)
+    db.commit()
     
     background_tasks.add_task(process_video, job_id, file_path)
     return {"job_id": job_id}
 
 @app.get("/job/{job_id}")
-async def get_job_status(job_id: str):
-    if job_id not in jobs:
+async def get_job_status(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(DBJob).filter(DBJob.id == job_id).first()
+    if not job:
         return {"error": "Job not found"}
-    return jobs[job_id]
+    return job
 
 @app.get("/files/{file_id}")
 async def get_file(file_id: str):
-    # Try multiple common extensions
     for ext in ['.mp4', '.mp3', '.mkv', '.mov']:
         path = os.path.join(UPLOAD_DIR, f"{file_id}") if '.' in file_id else os.path.join(UPLOAD_DIR, f"{file_id}{ext}")
         if os.path.exists(path):
             return FileResponse(path)
     return {"error": "File not found"}
 
-@app.post("/export/{job_id}")
-async def export_video(job_id: str):
-    if job_id not in jobs or jobs[job_id].status != "completed":
-        return {"error": "Job not ready for export"}
-    
-    job = jobs[job_id]
-    input_video = os.path.join(UPLOAD_DIR, f"{job_id}.mp4") # Simplified
-    output_video = os.path.join(PROCESSED_DIR, f"{job_id}_exported.mp4")
-    srt_path = os.path.join(PROCESSED_DIR, f"{job_id}.srt")
-    
-    # Generate SRT file
-    with open(srt_path, "w", encoding="utf-8") as f:
-        for i, cap in enumerate(job.captions):
-            start = format_srt_time(cap['start'])
-            end = format_srt_time(cap['end'])
-            f.write(f"{i+1}\n{start} --> {end}\n{cap['text']}\n\n")
-            
-    # Burn subtitles using FFmpeg
-    try:
-        command = [
-            'ffmpeg', '-i', input_video,
-            '-vf', f"subtitles={srt_path.replace('\\', '/')}",
-            '-c:a', 'copy',
-            '-y', output_video
-        ]
-        subprocess.run(command, check=True)
-        job.exported_url = f"http://localhost:8000/download/{job_id}"
-        return {"message": "Export completed", "url": job.exported_url}
-    except Exception as e:
-        return {"error": f"FFmpeg failed: {str(e)}"}
-
-@app.get("/download/{job_id}")
-async def download_exported(job_id: str):
-    path = os.path.join(PROCESSED_DIR, f"{job_id}_exported.mp4")
-    if os.path.exists(path):
-        return FileResponse(path, filename=f"SignWave_{job_id}.mp4")
-    return {"error": "Exported file not found"}
-
-def format_srt_time(seconds: float) -> str:
-    hrs = int(seconds // 3600)
-    mins = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    msecs = int((seconds * 1000) % 1000)
-    return f"{hrs:02}:{mins:02}:{secs:02},{msecs:03}"
-
 async def process_video(job_id: str, file_path: str):
+    db = SessionLocal() # Use fresh session for background task
     try:
+        job = db.query(DBJob).filter(DBJob.id == job_id).first()
         audio_path = file_path.replace(".mp4", ".mp3").replace(".mkv", ".mp3").replace(".mov", ".mp3")
         
-        jobs[job_id].status = "extracting_audio"
-        jobs[job_id].progress = 10
+        job.status = "extracting_audio"
+        job.progress = 10
+        db.commit()
         await processor.extract_audio(file_path, audio_path)
         
-        jobs[job_id].status = "transcribing"
-        jobs[job_id].progress = 40
+        job.status = "transcribing"
+        job.progress = 40
+        db.commit()
         result = await processor.transcribe(audio_path)
         
-        jobs[job_id].status = "processing_gloss"
-        jobs[job_id].progress = 70
+        job.status = "processing_gloss"
+        job.progress = 70
+        db.commit()
         captions = await processor.generate_captions(result)
         
-        jobs[job_id].status = "completed"
-        jobs[job_id].progress = 100
-        jobs[job_id].transcript = result['text']
-        jobs[job_id].captions = captions
+        job.status = "completed"
+        job.progress = 100
+        job.transcript = result['text']
+        job.captions = captions
+        db.commit()
         
     except Exception as e:
-        jobs[job_id].status = "failed"
+        job = db.query(DBJob).filter(DBJob.id == job_id).first()
+        if job: job.status = "failed"
+        db.commit()
         print(f"Error processing {job_id}: {e}")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     import uvicorn

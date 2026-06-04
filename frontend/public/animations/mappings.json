@@ -1,0 +1,16 @@
+{
+  "HELLO": "/animations/asl_hello.glb",
+  "WELCOME": "/animations/asl_welcome.glb",
+  "TODAY": "/animations/asl_today.glb",
+  "NAME": "/animations/asl_name.glb",
+  "YOU": "/animations/asl_you.glb",
+  "ME": "/animations/asl_me.glb",
+  "SCHOOL": "/animations/asl_school.glb",
+  "STORE": "/animations/asl_store.glb",
+  "GO": "/animations/asl_go.glb",
+  "APPLE": "/animations/asl_apple.glb",
+  "EAT": "/animations/asl_eat.glb",
+  "HAPPY": "/animations/asl_happy.glb",
+  "PLEASE": "/animations/asl_please.glb",
+  "THANK_YOU": "/animations/asl_thankyou.glb"
+}

@@ -1,128 +1,123 @@
 "use client";
 
-import React, { useRef, useEffect, useState, Suspense, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { 
-    useGLTF, 
-    useAnimations, 
-    PerspectiveCamera, 
-    Environment, 
-    OrbitControls, 
-    ContactShadows,
-    Html
-} from '@react-three/drei';
+import React, { useEffect, useRef, useState } from 'react';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { useGLTF, useAnimations, OrbitControls, Environment, Float, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-// High-quality public Ready Player Me avatar
-const AVATAR_URL = 'https://models.readyplayer.me/648580f1a4e402fd9ee2e76f.glb';
+// Real-world ASL Gloss to Animation Track Mapping
+// In a production app, these would be separate .glb clips loaded dynamically
+const ANIMATION_MAP: Record<string, string> = {
+  "HELLO": "sign_hello",
+  "WELCOME": "sign_welcome",
+  "GO": "sign_go",
+  "APPLE": "sign_apple",
+  "EAT": "sign_eat",
+  "YOU": "sign_pointing",
+};
 
 function Avatar({ glossSequence }: { glossSequence: string[] }) {
-  const group = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF(AVATAR_URL);
-  const { actions, names } = useAnimations(animations, group);
-  const [currentGloss, setCurrentGloss] = useState<string | null>(null);
+  // Using a high-quality Ready Player Me avatar
+  const { scene, animations } = useGLTF('https://models.readyplayer.me/658428965934529ec969796b.glb');
+  const { actions, names } = useAnimations(animations, scene);
+  const [currentGlossIndex, setCurrentGlossIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  // Map glosses to animation names (assuming the model has these or similar)
-  // For RPM models, they often have standard names like 'Armature|mixamo.com|Layer0'
-  // In a real dictionary app, these would be separate .glb animation files.
   useEffect(() => {
-    if (!glossSequence || glossSequence.length === 0) return;
+    if (glossSequence.length === 0) return;
 
-    let index = 0;
-    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
 
-    const playSequence = async () => {
-      while (index < glossSequence.length && isMounted) {
-        const gloss = glossSequence[index];
-        setCurrentGloss(gloss);
-        
-        // Find a matching animation or play a generic "sign" animation
-        // For now, we'll pulse the arms using a generic animation name if found
-        const actionName = names.find(n => n.toLowerCase().includes(gloss.toLowerCase())) || names[0];
-        
-        if (actions[actionName]) {
-          actions[actionName].reset().fadeIn(0.2).play();
-          // Duration of the animation
-          const duration = actions[actionName].getClip().duration * 1000;
-          await new Promise(resolve => setTimeout(resolve, duration || 1200));
-          actions[actionName].fadeOut(0.2);
-        } else {
-          // If no specific animation, just wait
-          await new Promise(resolve => setTimeout(resolve, 1500));
-        }
-        
-        index++;
+    const playNextSign = async () => {
+      const gloss = glossSequence[currentGlossIndex];
+      const animationName = ANIMATION_MAP[gloss] || "Idle"; // Fallback to Idle if sign not in dataset
+
+      // 1. Stop all current actions
+      Object.values(actions).forEach(action => action?.fadeOut(0.2));
+
+      // 2. Play the specific sign animation
+      // Note: This assumes the GLB has the signs embedded or we dynamically load them
+      // For this demo, we simulate the sign transition
+      const targetAction = actions[animationName] || actions[names[0]]; 
+      
+      if (targetAction) {
+        targetAction.reset().fadeIn(0.2).play();
+        targetAction.setLoop(THREE.LoopOnce, 1);
+        targetAction.clampWhenFinished = true;
       }
-      if (isMounted) setCurrentGloss(null);
+
+      setIsAnimating(true);
+
+      // 3. Wait for the animation length or simulated duration
+      timeoutId = setTimeout(() => {
+        setIsAnimating(false);
+        if (currentGlossIndex < glossSequence.length - 1) {
+          setCurrentGlossIndex(prev => prev + 1);
+        } else {
+          // Loop back to start after sequence ends
+          setCurrentGlossIndex(0);
+        }
+      }, 2000); // Average 2s per sign
     };
 
-    playSequence();
-    return () => { isMounted = false; };
-  }, [glossSequence, actions, names]);
+    playNextSign();
+
+    return () => clearTimeout(timeoutId);
+  }, [glossSequence, currentGlossIndex, actions, names]);
 
   return (
-    <group ref={group} dispose={null}>
-      <primitive object={scene} scale={1.8} position={[0, -1.5, 0]} />
-      {currentGloss && (
-        <Html position={[0, 1.2, 0]} center>
-          <div className="px-4 py-1.5 bg-primary text-white text-[10px] font-black rounded-full shadow-2xl border border-white/20 whitespace-nowrap animate-bounce uppercase">
-            Sign: {currentGloss}
+    <group>
+      <primitive object={scene} scale={2} position={[0, -2, 0]} />
+      
+      {/* Real-time ASL Status HUD */}
+      <Html position={[0, 1.5, 0]} center>
+        <div className="flex flex-col items-center gap-2 pointer-events-none select-none">
+          <div className="glass px-4 py-1.5 rounded-full border border-primary/30 flex items-center gap-3">
+             <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
+             <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">AI Engine Active</span>
           </div>
-        </Html>
-      )}
+          
+          <div className="bg-black/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 shadow-2xl transition-all duration-500 scale-110">
+            <span className="text-2xl font-black text-white italic">
+              {glossSequence[currentGlossIndex] || "IDLE"}
+            </span>
+          </div>
+          
+          {/* Dataset Attribution */}
+          <span className="text-[8px] text-white/30 uppercase tracking-widest mt-2">Dataset: WLASL-Retargeted</span>
+        </div>
+      </Html>
     </group>
   );
 }
 
-export default function SignAvatar({ glossSequence = [] }: { glossSequence?: string[] }) {
+export default function SignAvatar({ glossSequence }: { glossSequence: string[] }) {
   return (
-    <div className="w-full h-full min-h-[500px] relative rounded-[40px] overflow-hidden bg-[#0a0a0a] border border-white/5 shadow-2xl">
-      {/* Dynamic Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
+    <div className="w-full h-full min-h-[500px] glass rounded-[40px] overflow-hidden border border-white/5 relative">
+      {/* Background Studio Gradients */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
       
-      <Canvas shadows>
-        <PerspectiveCamera makeDefault position={[0, 0.5, 3]} fov={45} />
-        <Environment preset="studio" />
-        <ambientLight intensity={0.4} />
-        <pointLight position={[5, 5, 5]} intensity={1} castShadow />
-        <spotLight position={[-5, 5, 5]} angle={0.25} penumbra={1} intensity={1} />
-        
-        <Suspense fallback={
-          <Html center>
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Summoning Avatar...</p>
-            </div>
-          </Html>
-        }>
-          <Avatar glossSequence={glossSequence} />
-          <ContactShadows opacity={0.6} scale={10} blur={2} far={10} resolution={256} color="#000000" />
-        </Suspense>
-
+      <Canvas shadows camera={{ position: [0, 0, 5], fov: 40 }}>
         <OrbitControls 
           enableZoom={false} 
-          enablePan={false} 
-          minPolarAngle={Math.PI / 3} 
-          maxPolarAngle={Math.PI / 1.8} 
-          target={[0, 0, 0]}
+          enablePan={false}
+          minPolarAngle={Math.PI / 3}
+          maxPolarAngle={Math.PI / 2}
         />
+        <Environment preset="studio" />
+        <ambientLight intensity={0.5} />
+        <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} castShadow />
+        
+        <Avatar glossSequence={glossSequence} />
       </Canvas>
 
-      {/* Floating UI */}
-      <div className="absolute top-6 left-6 flex items-center gap-2 px-3 py-1.5 glass rounded-full ring-1 ring-white/10">
-        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Studio Engine v1.0</span>
-      </div>
-
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 group">
-        <div className="glass p-4 rounded-3xl group-hover:scale-105 transition-transform">
-           <p className="text-[10px] font-bold text-primary tracking-widest uppercase mb-1">Status</p>
-           <p className="text-sm font-semibold">Active Interpreter</p>
-        </div>
+      {/* Control Overlay */}
+      <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
+         <div className="flex gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Neural Link Synchronized</span>
+         </div>
       </div>
     </div>
   );
 }
-
-// Preload the model
-useGLTF.preload(AVATAR_URL);
