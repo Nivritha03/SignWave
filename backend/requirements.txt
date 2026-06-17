@@ -3,12 +3,9 @@ uvicorn[standard]
 python-multipart
 openai-whisper
 moviepy
-langchain
-langchain-openai
 python-dotenv
 pydantic
 sqlalchemy
-psycopg2-binary
 alembic
 torch
 torchvision
@@ -16,3 +13,6 @@ torchaudio
 jinja2
 python-jose[cryptography]
 passlib[bcrypt]
+google-generativeai
+spacy
+httpx

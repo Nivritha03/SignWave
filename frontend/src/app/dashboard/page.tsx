@@ -1,92 +1,63 @@
+// "use client";
+
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Upload, 
-  FileVideo, 
-  Settings, 
-  Plus, 
-  Search,
-  LayoutGrid,
-  List as ListIcon,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  MoreVertical,
-  LogOut
-} from 'lucide-react';
-import axios from 'axios';
-import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import React, { useState, useEffect } from "react";
+import { Upload, FileVideo, Settings, Plus, Search, LayoutGrid, CheckCircle2, MoreVertical } from "lucide-react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (!auth.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-    fetchJobs();
-  }, [router]);
-
   const fetchJobs = async () => {
     try {
-      const token = auth.getToken();
-      const response = await axios.get('http://localhost:8000/jobs', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get("http://localhost:8000/jobs");
       setJobs(response.data);
     } catch (error: any) {
-      if (error.response?.status === 401) {
-        auth.logout();
-        router.push('/login');
-      }
-      console.error('Failed to fetch jobs', error);
+      if (error?.response?.status === 401) router.push("/");
+      console.error("Failed to fetch jobs", error);
     }
   };
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     setIsUploading(true);
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('token', auth.getToken() || '');
-
+    formData.append("file", file);
     try {
-      const response = await axios.post('http://localhost:8000/upload', formData);
+      const response = await axios.post("http://localhost:8000/upload", formData);
       fetchJobs();
       pollJobStatus(response.data.job_id);
     } catch (error) {
-      console.error('Upload failed', error);
+      console.error("Upload failed", error);
     } finally {
       setIsUploading(false);
     }
-  };
-
-  const handleLogout = () => {
-    auth.logout();
-    router.push('/login');
   };
 
   const pollJobStatus = async (jobId: string) => {
     const interval = setInterval(async () => {
       try {
         const response = await axios.get(`http://localhost:8000/job/${jobId}`);
-        setJobs(prev => prev.map(job => 
-          job.id === jobId ? { ...job, status: response.data.status, progress: response.data.progress } : job
-        ));
-
-        if (response.data.status === 'completed' || response.data.status === 'failed') {
+        setJobs((prev) =>
+          prev.map((job) =>
+            job.id === jobId ? { ...job, status: response.data.status, progress: response.data.progress } : job
+          )
+        );
+        if (response.data.status === "completed" || response.data.status === "failed") {
           clearInterval(interval);
           fetchJobs();
         }
       } catch (error) {
-        console.error('Polling failed', error);
+        console.error("Polling failed", error);
         clearInterval(interval);
       }
     }, 2000);
@@ -102,7 +73,6 @@ export default function Dashboard() {
           </div>
           <span className="font-bold text-xl uppercase tracking-tighter">SignWave</span>
         </div>
-
         <nav className="flex-1 space-y-2">
           <button className="w-full flex items-center gap-3 px-4 py-3 bg-primary/10 text-primary rounded-xl text-sm font-bold">
             <LayoutGrid className="w-4 h-4" />
@@ -117,14 +87,6 @@ export default function Dashboard() {
             Settings
           </button>
         </nav>
-
-        <button 
-          onClick={handleLogout}
-          className="mt-autoflex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-500/5 rounded-xl text-sm font-bold transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
       </aside>
 
       {/* Main Content */}
@@ -134,7 +96,6 @@ export default function Dashboard() {
             <h1 className="text-4xl font-black mb-2 tracking-tight">Your Studio</h1>
             <p className="text-muted-foreground">Manage and track your AI translations</p>
           </div>
-
           <label className="bg-primary hover:bg-primary/90 text-white px-8 py-3.5 rounded-2xl font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-xl shadow-primary/20 flex items-center gap-2">
             <Plus className="w-5 h-5" />
             New Project
@@ -150,8 +111,10 @@ export default function Dashboard() {
               <input type="text" placeholder="Search your archive..." className="bg-transparent border-none text-sm outline-none w-full" />
             </div>
             <div className="flex items-center gap-3">
-               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-2">{jobs.length} Items</span>
-               <button className="p-2.5 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"><LayoutGrid className="w-4 h-4" /></button>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-2">{jobs.length} Items</span>
+              <button className="p-2.5 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                <LayoutGrid className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
@@ -167,32 +130,29 @@ export default function Dashboard() {
             </thead>
             <tbody className="divide-y divide-white/5">
               {jobs.map((job) => (
-                <tr 
-                  key={job.id} 
-                  className="group hover:bg-white/[0.02] transition-all cursor-pointer relative"
-                  onClick={() => router.push(`/dashboard/${job.id}`)}
-                >
-                  <td className="px-10 py-8">
+                <tr key={job.id} className="group hover:bg-white/[0.02] transition-all cursor-pointer relative" onClick={() => router.push(`/dashboard/${job.id}`)}>
+                  <td className="px-10 py-8 relative">
+                    <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary scale-y-0 group-hover:scale-y-100 transition-transform origin-center rounded-r-full" />
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center group-hover:bg-primary/20 transition-all duration-500 ring-1 ring-white/5">
                         <FileVideo className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
-                      <span className="font-bold text-lg">{job.name || `Session_${job.id.slice(0,6)}`}</span>
+                      <span className="font-bold text-lg">{job.name || `Session_${job.id.slice(0, 6)}`}</span>
                     </div>
                   </td>
                   <td className="px-10 py-8">
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                      job.status === 'completed' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
-                      job.status === 'failed' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                      'bg-primary/10 text-primary border border-primary/20 animate-pulse'
-                    }`}>
-                      {job.status.replace('_', ' ')}
-                    </span>
+                      job.status === "completed"
+                        ? "bg-green-500/10 text-green-500 border border-green-500/20"
+                        : job.status === "failed"
+                        ? "bg-red-500/10 text-red-500 border border-red-500/20"
+                        : "bg-primary/10 text-primary border border-primary/20 animate-pulse"
+                    }`}>{job.status.replace("_", " ")}</span>
                   </td>
                   <td className="px-10 py-8">
                     <div className="w-40 flex items-center gap-4">
                       <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden ring-1 ring-white/5">
-                        <div className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(129,140,248,0.5)]" style={{ width: `${job.progress}%` }} />
+                        <div className="h-full bg-primary transition-all duration-1000 ease-out" style={{ width: `${job.progress}%` }} />
                       </div>
                       <span className="text-[10px] font-bold opacity-40">{job.progress}%</span>
                     </div>
@@ -203,8 +163,6 @@ export default function Dashboard() {
                       <MoreVertical className="w-4 h-4" />
                     </button>
                   </td>
-                  {/* Decorative side accent */}
-                  <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary scale-y-0 group-hover:scale-y-100 transition-transform origin-center rounded-r-full" />
                 </tr>
               ))}
               {jobs.length === 0 && (

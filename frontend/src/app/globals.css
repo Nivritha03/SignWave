@@ -1,48 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #6366f1;
+  --background: #050816;
+  --foreground: #ffffff;
+  --card: #0A1020;
+  --card-foreground: #ffffff;
+  --popover: #0A1020;
+  --popover-foreground: #ffffff;
+  --primary: #7C5CFF;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
+  --secondary: #0A1020;
+  --secondary-foreground: #ffffff;
+  --muted: #0A1020;
+  --muted-foreground: #a1a1aa;
+  --accent: #3B82F6;
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #fafafa;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #6366f1;
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #22D3EE;
   --radius: 0.75rem;
+  
+  --color-electric-violet: #7C5CFF;
+  --color-neon-blue: #3B82F6;
+  --color-cyan-glow: #22D3EE;
+  --color-emerald-success: #10B981;
 }
 
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #09090b;
-  --card-foreground: #fafafa;
-  --popover: #09090b;
-  --popover-foreground: #fafafa;
-  --primary: #818cf8;
+  --background: #050816;
+  --foreground: #ffffff;
+  --card: #0A1020;
+  --card-foreground: #ffffff;
+  --popover: #0A1020;
+  --popover-foreground: #ffffff;
+  --primary: #7C5CFF;
   --primary-foreground: #ffffff;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
+  --secondary: #0A1020;
+  --secondary-foreground: #ffffff;
+  --muted: #0A1020;
   --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
+  --accent: #3B82F6;
+  --accent-foreground: #ffffff;
   --destructive: #7f1d1d;
   --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #818cf8;
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #22D3EE;
 }
 
 @theme inline {
@@ -52,6 +57,14 @@
   --color-secondary: var(--secondary);
   --color-accent: var(--accent);
   --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-electric-violet: var(--color-electric-violet);
+  --color-neon-blue: var(--color-neon-blue);
+  --color-cyan-glow: var(--color-cyan-glow);
+  --color-emerald-success: var(--color-emerald-success);
   --radius-xl: var(--radius);
 }
 
@@ -62,6 +75,7 @@ body {
   overflow-x: hidden;
 }
 
+/* ── Glassmorphism ─────────────────────────────────────────── */
 .glass {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(12px);
@@ -74,8 +88,72 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* ── Gradient text ─────────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+  background: linear-gradient(135deg, #7C5CFF 0%, #22D3EE 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Keyframe animations ───────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes slide-in-from-bottom {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes fade-in-only {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Animation utility classes ─────────────────────────────── */
+.animate-fade-in {
+  animation: fade-in 0.6s ease both;
+}
+
+/* animate-in base — children specify what to animate */
+.animate-in {
+  animation-duration: 0.35s;
+  animation-timing-function: ease;
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fade-in-only;
+}
+
+.slide-in-from-bottom-2 {
+  animation-name: slide-in-from-bottom;
+}
+
+/* ── Animated Gradient Background ───────────────────── */
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-bg {
+  background: linear-gradient(270deg, #050816, #0A1020, #050816);
+  background-size: 600% 600%;
+  animation: gradientBG 12s ease infinite;
+}
+
+.aurora-bg {
+  background: radial-gradient(circle at 50% -20%, rgba(124, 92, 255, 0.15), rgba(5, 8, 22, 0) 50%),
+              radial-gradient(circle at 80% 50%, rgba(34, 211, 238, 0.1), rgba(5, 8, 22, 0) 50%);
+}
+
+.glass-card {
+  background: rgba(10, 16, 32, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
 }

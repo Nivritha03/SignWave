@@ -9,7 +9,8 @@ from moviepy import VideoFileClip
 # Initialize SpaCy for ASL linguistic reordering
 try:
     nlp = spacy.load("en_core_web_sm")
-except:
+except Exception as e:
+    print(f"WARNING: Failed to load SpaCy model 'en_core_web_sm'. Fallback translation will be limited. Error: {e}")
     nlp = None
 
 class SignWaveProcessor:
@@ -21,8 +22,10 @@ class SignWaveProcessor:
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
             genai.configure(api_key=api_key)
-            self.llm = genai.GenerativeModel('gemini-pro')
+            self.llm = genai.GenerativeModel('gemini-1.5-pro')
+            print("Gemini initialized successfully with gemini-1.5-pro.")
         else:
+            print("WARNING: GEMINI_API_KEY not found. LLM translation will be disabled.")
             self.llm = None
 
     async def extract_audio(self, video_path: str, audio_path: str):
@@ -32,8 +35,21 @@ class SignWaveProcessor:
 
     async def transcribe(self, audio_path: str):
         if self.model is None:
-            self.model = whisper.load_model("base", device=self.device)
-        return self.model.transcribe(audio_path)
+            print(f"Loading Whisper 'small' model on {self.device}...")
+            self.model = whisper.load_model("small", device=self.device)
+        
+        # Ensure ffmpeg bin folder is in PATH for Whisper to call it
+        try:
+            import imageio_ffmpeg
+            ffmpeg_dir = os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
+            if ffmpeg_dir not in os.environ["PATH"]:
+                os.environ["PATH"] += os.path.pathsep + ffmpeg_dir
+        except Exception as e:
+            print(f"Failed to append imageio-ffmpeg to PATH: {e}")
+
+        print(f"Starting transcription...")
+        fp16 = self.device != "cpu"
+        return self.model.transcribe(audio_path, fp16=fp16)
 
     async def translate_to_gloss(self, text: str):
         """
