@@ -16,3 +16,6 @@ passlib[bcrypt]
 google-generativeai
 spacy
 httpx
+yt-dlp
+imageio-ffmpeg
+numpy

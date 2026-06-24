@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 # Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "signwave_super_secret_key_123!")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440)) # 24 hours
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

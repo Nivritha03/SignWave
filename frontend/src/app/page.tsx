@@ -1,312 +1,390 @@
 "use client";
 
-import { motion } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
-import SignAvatar from "@/components/SignAvatar";
-import { Section } from "@/components/Section";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { 
-  Upload, AudioWaveform, FileText, Languages, Video, BarChart3, 
-  CheckCircle2, Play, Users, Globe2, Shield, Zap, Sparkles, MoveRight
+  Upload, AudioWaveform, FileText, Languages, Video, 
+  Play, Users, Zap, Sparkles, MoveRight, Layers, Activity, BrainCircuit, Mic
 } from "lucide-react";
+import SignAvatar from "@/components/SignAvatar";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Ensure GSAP plugins are registered
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
+const NeuralBackground = () => {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-0 opacity-40 overflow-hidden mix-blend-screen">
+      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-electric-violet/20 blur-[150px] animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-neon-blue/10 blur-[150px]"></div>
+      <div className="absolute top-[40%] left-[60%] w-[30vw] h-[30vw] rounded-full bg-cyan-glow/15 blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+    </div>
+  );
+};
+
 export default function Home() {
-  const demoGloss = ['HELLO', 'WELCOME', 'FUTURE', 'ACCESSIBILITY'];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
+
+  const heroY = useTransform(scrollYProgress, [0, 0.2], [0, 150]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+
+  useEffect(() => {
+    // Advanced GSAP animations for sections
+    const sections = gsap.utils.toArray('.gsap-section');
+    sections.forEach((sec: any) => {
+      gsap.fromTo(sec, 
+        { y: 100, opacity: 0 },
+        { 
+          y: 0, opacity: 1, duration: 1.2, ease: "power3.out",
+          scrollTrigger: {
+            trigger: sec,
+            start: "top 85%",
+            toggleActions: "play none none reverse"
+          }
+        }
+      );
+    });
+  }, []);
+
+  const [glosses, setGlosses] = useState<string[]>(['HELLO', 'WELCOME', 'FUTURE', 'ACCESSIBILITY']);
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden font-sans">
+    <div ref={containerRef} className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden selection:bg-electric-violet selection:text-white">
+      <NeuralBackground />
       
-      {/* Background Effects */}
-      <div className="fixed inset-0 pointer-events-none z-0 aurora-bg opacity-40"></div>
-      
-      {/* --- SECTION 1: FULLSCREEN HERO --- */}
-      <section className="relative min-h-screen flex items-center justify-center pt-20 pb-32 px-6 z-10">
-        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      {/* --- HERO SECTION --- */}
+      <section className="relative min-h-[100vh] flex items-center justify-center pt-24 pb-12 px-6 z-10">
+        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
-          <motion.div 
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 1 }}
-            className="flex flex-col gap-6"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass w-fit border-primary/30">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">SignWave AI OS 2.0</span>
-            </div>
+          <div className="lg:col-span-7 flex flex-col gap-8 z-20">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass w-fit border border-electric-violet/30 shadow-[0_0_20px_rgba(124,92,255,0.2)] backdrop-blur-xl"
+            >
+              <div className="w-2 h-2 rounded-full bg-cyan-glow animate-pulse"></div>
+              <span className="text-sm font-semibold tracking-wide text-gray-200">SignWave AI Engine v2.0 Live</span>
+            </motion.div>
             
-            <h1 className="text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tighter leading-[1.1]">
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
+              className="text-6xl md:text-7xl lg:text-[5.5rem] font-bold tracking-tighter leading-[1.05]"
+            >
               Transform Speech Into <br />
-              <span className="gradient-text">Accessible Communication</span>
-            </h1>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-electric-violet via-neon-blue to-cyan-glow drop-shadow-lg">
+                Accessible Reality
+              </span>
+            </motion.h1>
             
-            <p className="text-xl text-muted-foreground max-w-xl leading-relaxed">
-              Convert videos, meetings, podcasts, and live conversations into AI-powered captions, transcripts, and lifelike sign language animations in real-time.
-            </p>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+              className="text-xl md:text-2xl text-gray-400 max-w-2xl leading-relaxed font-light"
+            >
+              Convert videos, meetings, and podcasts into real-time transcripts, captions, and hyper-realistic 3D sign language animations. The future of accessibility is here.
+            </motion.p>
             
-            <div className="flex flex-wrap items-center gap-4 mt-4">
-              <Link href="/dashboard" className="px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-2xl hover:bg-primary/90 transition shadow-[0_0_40px_-10px_rgba(124,92,255,0.5)] flex items-center gap-2">
-                Start Creating <MoveRight className="w-5 h-5" />
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+              className="flex flex-col sm:flex-row items-center gap-4 mt-4"
+            >
+              <Link href="/dashboard" className="w-full sm:w-auto px-8 py-4 bg-white text-black font-semibold rounded-full hover:scale-105 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] flex items-center justify-center gap-2 group">
+                Start Creating <MoveRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <button className="px-8 py-4 glass-card rounded-2xl font-semibold hover:bg-white/10 transition flex items-center gap-2">
-                <Play className="w-5 h-5" /> Watch Demo
+              <button className="w-full sm:w-auto px-8 py-4 glass rounded-full font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2 group">
+                <Play className="w-5 h-5 group-hover:text-cyan-glow transition-colors" /> Watch Demo
               </button>
-            </div>
+            </motion.div>
             
-            <div className="mt-8 flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-xs">U{i}</div>
-                ))}
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.6 }}
+              className="mt-8 flex items-center gap-6 pt-8 border-t border-white/10"
+            >
+              <div className="flex flex-col gap-1">
+                <span className="text-3xl font-bold text-white">10M+</span>
+                <span className="text-xs text-gray-500 uppercase tracking-widest">Words Processed</span>
               </div>
-              <p>Trusted by educators, creators, and accessibility advocates.</p>
-            </div>
-          </motion.div>
+              <div className="w-px h-10 bg-white/10"></div>
+              <div className="flex flex-col gap-1">
+                <span className="text-3xl font-bold text-white">99%</span>
+                <span className="text-xs text-gray-500 uppercase tracking-widest">Accuracy</span>
+              </div>
+              <div className="w-px h-10 bg-white/10"></div>
+              <div className="flex flex-col gap-1">
+                <span className="text-3xl font-bold text-white">50+</span>
+                <span className="text-xs text-gray-500 uppercase tracking-widest">Languages</span>
+              </div>
+            </motion.div>
+          </div>
 
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.2 }}
-            className="relative h-[600px] w-full rounded-3xl glass-card overflow-hidden border border-primary/20 flex items-center justify-center group"
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
+            className="lg:col-span-5 relative h-[650px] w-full rounded-[2rem] glass overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(124,92,255,0.15)] flex items-center justify-center group"
           >
-            {/* Holographic chamber effects */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-primary/20"></div>
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-primary/30 blur-[80px] rounded-full"></div>
-            
-            <div className="w-full h-full relative z-10 p-4">
-              <SignAvatar glossSequence={demoGloss} />
+            {/* Inner holographic chamber glow */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-electric-violet/5 via-transparent to-neon-blue/10 z-0"></div>
+            <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/5 text-xs text-gray-300">
+              <Activity className="w-3 h-3 text-emerald-success animate-pulse" /> Live Neural Sync
+            </div>
+            <div className="w-full h-full relative z-10 p-2 mix-blend-lighten">
+              <SignAvatar glossSequence={glosses} />
+            </div>
+            {/* Floating UI Elements */}
+            <div className="absolute bottom-6 left-6 z-20 glass px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3 backdrop-blur-xl">
+              <div className="w-10 h-10 rounded-full bg-electric-violet/20 flex items-center justify-center">
+                <Mic className="w-5 h-5 text-electric-violet" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-400">AI-Powered Detection</div>
+                <div className="text-sm font-semibold text-white">&quot;Welcome to the future&quot;</div>
+              </div>
             </div>
           </motion.div>
+        </motion.div>
+      </section>
+
+      {/* --- HOW IT WORKS (PIPELINE) --- */}
+      <section className="py-32 px-6 relative z-10 gsap-section">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-24 flex flex-col items-center">
+            <div className="px-4 py-1.5 rounded-full glass text-sm text-cyan-glow mb-6 border border-cyan-glow/30">AI Pipeline</div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">How SignWave Works</h2>
+            <p className="text-gray-400 text-lg max-w-2xl">A seamless, five-step neural network pipeline converting raw audio into an expressive 3D sign language performance.</p>
+          </div>
+
+          <div className="relative grid grid-cols-1 md:grid-cols-5 gap-6">
+            {/* Animated Connection Line */}
+            <div className="hidden md:block absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-white/5 -translate-y-1/2 z-0">
+              <div className="h-full bg-gradient-to-r from-electric-violet via-cyan-glow to-electric-violet w-1/3 animate-[gradientBG_3s_linear_infinite] shadow-[0_0_10px_#22D3EE]"></div>
+            </div>
+
+            {[
+              { step: "01", title: "Ingest", icon: <Upload />, desc: "Upload video or stream live audio." },
+              { step: "02", title: "Transcribe", icon: <AudioWaveform />, desc: "Whisper AI extracts speech with 99% accuracy." },
+              { step: "03", title: "Context", icon: <FileText />, desc: "LLMs analyze semantics and generate captions." },
+              { step: "04", title: "Translate", icon: <Languages />, desc: "Convert text to linguistic ASL Gloss structure." },
+              { step: "05", title: "Animate", icon: <Video />, desc: "Real-time rendering of 3D avatar gestures." }
+            ].map((s, i) => (
+              <motion.div 
+                key={i}
+                whileHover={{ y: -10, scale: 1.02 }}
+                className="glass p-6 rounded-3xl relative z-10 flex flex-col bg-[#0A1020]/80 border border-white/5 hover:border-electric-violet/50 transition-all group shadow-xl"
+              >
+                <div className="text-xs font-mono text-gray-500 mb-4">{s.step}</div>
+                <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-white mb-6 group-hover:bg-electric-violet/20 group-hover:text-electric-violet transition-colors border border-white/5">
+                  {s.icon}
+                </div>
+                <h3 className="font-bold text-lg mb-2 text-white">{s.title}</h3>
+                <p className="text-sm text-gray-400">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* --- SECTION 2: HOW IT WORKS --- */}
-      <Section className="px-6 bg-card/30 border-y border-white/5">
+      {/* --- LIVE DEMO SHOWCASE --- */}
+      <section className="py-32 px-6 relative z-10 bg-black/40 border-y border-white/5 gsap-section">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">The SignWave Pipeline</h2>
-            <p className="text-muted-foreground text-lg">Five steps from audio to fully accessible animated content.</p>
+          <div className="flex flex-col lg:flex-row items-end justify-between mb-16 gap-6">
+            <div>
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">Live Product Demo</h2>
+              <p className="text-gray-400 text-lg max-w-xl">Watch our proprietary translation engine synchronize captions and avatar movements with millisecond precision.</p>
+            </div>
+            <button className="px-6 py-3 rounded-full glass border border-white/10 hover:bg-white/5 flex items-center gap-2 text-sm font-medium">
+              <Layers className="w-4 h-4"/> View Full Studio
+            </button>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            {[
-              { step: 1, title: "Upload", icon: <Upload />, desc: "Video, Audio, or Link" },
-              { step: 2, title: "Transcribe", icon: <AudioWaveform />, desc: "Whisper AI Engine" },
-              { step: 3, title: "Caption", icon: <FileText />, desc: "Context-aware generation" },
-              { step: 4, title: "Translate", icon: <Languages />, desc: "Semantic ASL Gloss" },
-              { step: 5, title: "Animate", icon: <Video />, desc: "3D Avatar Rendering" }
-            ].map((s, i) => (
-              <motion.div 
-                key={i}
-                whileHover={{ y: -10 }}
-                className="glass-card p-6 rounded-2xl relative flex flex-col items-center text-center gap-4"
-              >
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                  {s.icon}
-                </div>
-                <h3 className="font-bold text-lg">Step {s.step}: {s.title}</h3>
-                <p className="text-sm text-muted-foreground">{s.desc}</p>
-                {i < 4 && <div className="hidden md:block absolute -right-3 top-1/2 text-primary/50"><MoveRight/></div>}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      {/* --- SECTION 3: LIVE PRODUCT DEMO --- */}
-      <Section className="px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-16">See It In Action</h2>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[500px]">
-            <div className="glass-card rounded-2xl p-4 flex items-center justify-center border-border">
-              <div className="w-full h-full bg-secondary rounded-xl flex items-center justify-center">
-                 <Video className="w-12 h-12 text-muted-foreground/50" />
-                 <span className="ml-2 text-muted-foreground font-medium">Source Video</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[600px]">
+            {/* Left: Video */}
+            <div className="lg:col-span-4 glass rounded-[2rem] p-4 flex flex-col border border-white/10 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 z-10 pointer-events-none"></div>
+              <div className="w-full h-full bg-[#111] rounded-2xl flex items-center justify-center relative overflow-hidden">
+                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1000&auto=format&fit=crop')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-transform duration-700"></div>
+                 <button className="w-16 h-16 rounded-full glass bg-white/10 backdrop-blur-md flex items-center justify-center z-20 hover:scale-110 transition-transform">
+                   <Play className="w-6 h-6 text-white ml-1" />
+                 </button>
+              </div>
+              <div className="absolute bottom-6 left-6 z-20">
+                <div className="text-sm font-semibold text-white">Source Input</div>
+                <div className="text-xs text-gray-400">English • Tech Keynote</div>
               </div>
             </div>
             
-            <div className="glass-card rounded-2xl p-6 flex flex-col gap-4 border-border overflow-hidden relative">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent"></div>
-               <h3 className="font-bold border-b border-border pb-2">Live Transcript stream</h3>
-               <div className="space-y-4 flex-1 overflow-auto opacity-70">
-                 <p className="text-sm"><span className="text-primary mr-2">00:01</span> Welcome to the future of AI.</p>
-                 <p className="text-sm"><span className="text-primary mr-2">00:05</span> Today we demonstrate real-time translation.</p>
+            {/* Center: Transcript */}
+            <div className="lg:col-span-3 glass rounded-[2rem] p-6 flex flex-col gap-4 border border-white/10 relative overflow-hidden">
+               <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                 <h3 className="font-semibold text-white flex items-center gap-2"><BrainCircuit className="w-4 h-4 text-electric-violet"/> AI Analysis</h3>
                </div>
-               <div className="mt-auto flex items-center justify-between text-xs">
-                 <span className="text-emerald-success flex items-center gap-1"><Zap className="w-3 h-3"/> 99% Confidence</span>
-                 <span className="bg-primary/20 text-primary px-2 py-1 rounded">English &rarr; ASL</span>
-               </div>
-            </div>
-            
-            <div className="glass-card rounded-2xl p-4 relative border-border border-primary/30 shadow-[0_0_30px_-5px_rgba(34,211,238,0.2)]">
-               <div className="absolute top-4 left-4 z-20 bg-black/50 backdrop-blur px-2 py-1 rounded text-xs border border-white/10 flex items-center gap-2">
-                 <span className="w-2 h-2 rounded-full bg-emerald-success animate-pulse"></span>
-                 Active Avatar
-               </div>
-               <SignAvatar glossSequence={['WELCOME', 'FUTURE', 'AI']} />
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* --- SECTION 4: FEATURES --- */}
-      <Section className="px-6 bg-card/20">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">Unmatched Capabilities</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { title: "AI Captioning", desc: "Context-aware subtitles synced perfectly with audio." },
-              { title: "Speech-to-Text", desc: "Whisper-powered transcription with speaker diarization." },
-              { title: "Live Translation", desc: "Instantly convert spoken English into ASL Gloss." },
-              { title: "Sign Language Avatar", desc: "Lifelike 3D rendering with emotion and fluid motion." },
-              { title: "Multi-Language", desc: "Translate from 50+ languages into universal signs." },
-              { title: "Accessibility Analytics", desc: "Track your impact and compliance metrics." }
-            ].map((f, i) => (
-              <motion.div 
-                key={i}
-                whileHover={{ scale: 1.02 }}
-                className="glass-card p-8 rounded-3xl border border-white/5 hover:border-primary/50 transition-colors group"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Sparkles className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">{f.title}</h3>
-                <p className="text-muted-foreground">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      {/* --- SECTION 5: ACCESSIBILITY IMPACT --- */}
-      <Section className="px-6 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/20 blur-[120px] rounded-full pointer-events-none"></div>
-        <div className="max-w-7xl mx-auto glass-card rounded-3xl p-12 border border-primary/20">
-          <h2 className="text-3xl font-bold text-center mb-12">Global Impact</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { label: "Words Processed", val: "10M+" },
-              { label: "Minutes Translated", val: "500K+" },
-              { label: "Accuracy", val: "99%" },
-              { label: "Languages", val: "50+" }
-            ].map((s, i) => (
-              <div key={i}>
-                <div className="text-4xl md:text-5xl font-extrabold gradient-text mb-2">{s.val}</div>
-                <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      {/* --- SECTION 6: USE CASES --- */}
-      <Section className="px-6">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold mb-12 text-center">Built For Every Industry</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-             {['Education', 'Corporate Meetings', 'Healthcare', 'Content Creators'].map((useCase, i) => (
-               <motion.div key={i} whileHover={{ y: -5 }} className="glass-card p-6 rounded-2xl h-64 flex flex-col justify-end group overflow-hidden relative">
-                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10"></div>
-                 <h3 className="text-2xl font-bold relative z-20 group-hover:text-primary transition-colors">{useCase}</h3>
-               </motion.div>
-             ))}
-          </div>
-        </div>
-      </Section>
-
-      {/* --- SECTION 7: TESTIMONIALS --- */}
-      <Section className="px-6 bg-card/30">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-12">What Our Users Say</h2>
-          <div className="glass-card p-12 rounded-3xl relative">
-             <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/50 text-2xl">"</div>
-             <p className="text-2xl italic text-muted-foreground mb-8">
-               "SignWave has completely transformed how our university delivers online lectures. The AI avatar is incredibly lifelike and the translation speed is unparalleled."
-             </p>
-             <div>
-               <div className="font-bold text-lg">Dr. Sarah Jenkins</div>
-               <div className="text-sm text-primary">Director of Accessibility, Tech University</div>
-             </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* --- SECTION 8: AI TECH STACK --- */}
-      <Section className="px-6 overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Neural Architecture</h2>
-            <p className="text-muted-foreground">Powered by state-of-the-art machine learning models.</p>
-          </div>
-          
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 glass-card p-8 rounded-3xl">
-             {['Speech', 'Transcription', 'Captioning', 'Translation', 'Gloss', 'Animation'].map((step, i) => (
-               <div key={i} className="flex items-center gap-4">
-                 <div className="px-4 py-2 rounded-lg bg-secondary/50 border border-white/10 font-mono text-sm">
-                   {step}
+               <div className="space-y-6 flex-1 overflow-auto opacity-80 pt-2 pr-2 custom-scrollbar">
+                 <div className="flex flex-col gap-1">
+                   <div className="text-xs text-electric-violet font-mono">00:01:23</div>
+                   <p className="text-sm text-gray-300 bg-white/5 p-3 rounded-xl border border-white/5">Welcome everyone to our annual keynote presentation.</p>
                  </div>
-                 {i < 5 && <MoveRight className="text-primary hidden md:block" />}
-                 {i < 5 && <MoveRight className="text-primary rotate-90 md:hidden my-2" />}
+                 <div className="flex flex-col gap-1">
+                   <div className="text-xs text-cyan-glow font-mono flex items-center gap-2">00:01:28 <span className="w-2 h-2 rounded-full bg-cyan-glow animate-pulse"></span> Processing</div>
+                   <p className="text-sm text-white bg-electric-violet/20 p-3 rounded-xl border border-electric-violet/30 shadow-[0_0_15px_rgba(124,92,255,0.2)]">Today, we are thrilled to unveil a breakthrough in accessible technology.</p>
+                 </div>
+                 <div className="flex flex-col gap-1 opacity-40">
+                   <div className="text-xs text-gray-500 font-mono">00:01:35</div>
+                   <p className="text-sm text-gray-400 p-3">This changes everything.</p>
+                 </div>
                </div>
-             ))}
+               <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+                 <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-full flex items-center gap-1.5 font-medium border border-emerald-500/20">
+                   <Zap className="w-3 h-3"/> 99.8% Confidence
+                 </span>
+               </div>
+            </div>
+            
+            {/* Right: Avatar */}
+            <div className="lg:col-span-5 glass rounded-[2rem] p-2 relative border border-cyan-glow/30 shadow-[0_0_40px_-10px_rgba(34,211,238,0.2)] overflow-hidden">
+               <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
+                 <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium border border-white/10 flex items-center gap-2 w-fit">
+                   <span className="w-2 h-2 rounded-full bg-emerald-success animate-pulse"></span> Avatar Engine Active
+                 </div>
+                 <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-xs text-gray-300 border border-white/5 w-fit">
+                   Gloss: [TODAY] [EXCITED] [ANNOUNCE] [BREAKTHROUGH]
+                 </div>
+               </div>
+               <div className="absolute inset-0 bg-gradient-to-t from-cyan-glow/10 to-transparent pointer-events-none"></div>
+               <SignAvatar glossSequence={['WELCOME', 'FUTURE', 'ACCESSIBILITY']} />
+            </div>
           </div>
         </div>
-      </Section>
+      </section>
 
-      {/* --- SECTION 9: PRICING --- */}
-      <Section className="px-6">
+      {/* --- DASHBOARD PREVIEW --- */}
+      <section className="py-32 px-6 relative z-10 gsap-section">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-16">Transparent Pricing</h2>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">Manage Projects with Ease</h2>
+            <p className="text-gray-400 text-lg">A beautiful, intuitive dashboard designed for creators and enterprises.</p>
+          </div>
+          
+          <div className="glass rounded-[2.5rem] p-8 md:p-12 border border-white/10 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-electric-violet/10 blur-[100px] rounded-full pointer-events-none"></div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+               {[
+                 { title: "Q3 Earnings Call", status: "Completed", progress: 100, time: "2h ago", image: "https://images.unsplash.com/photo-1556761175-4b46a572b786?q=80&w=600&auto=format&fit=crop" },
+                 { title: "Product Launch Video", status: "Processing", progress: 68, time: "Just now", image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=600&auto=format&fit=crop" },
+                 { title: "University Lecture 101", status: "Queued", progress: 0, time: "Pending", image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=600&auto=format&fit=crop" }
+               ].map((project, i) => (
+                 <motion.div key={i} whileHover={{ y: -8 }} className="bg-[#0A1020] rounded-2xl overflow-hidden border border-white/5 hover:border-white/20 transition-all cursor-pointer group">
+                   <div className="h-32 w-full relative overflow-hidden">
+                     <img src={project.image} alt={project.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500" />
+                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A1020] to-transparent"></div>
+                   </div>
+                   <div className="p-5">
+                     <h4 className="font-semibold text-white mb-1 truncate">{project.title}</h4>
+                     <p className="text-xs text-gray-400 mb-4">{project.time}</p>
+                     
+                     <div className="flex items-center justify-between text-xs mb-2">
+                       <span className={cn("font-medium", project.status === 'Completed' ? "text-emerald-400" : project.status === 'Processing' ? "text-cyan-glow" : "text-gray-500")}>
+                         {project.status}
+                       </span>
+                       <span className="text-gray-400">{project.progress}%</span>
+                     </div>
+                     <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                       <div 
+                         className={cn("h-full rounded-full relative", project.status === 'Completed' ? "bg-emerald-500" : "bg-cyan-glow")} 
+                         style={{ width: `${project.progress}%` }}
+                       >
+                         {project.progress > 0 && project.progress < 100 && (
+                           <div className="absolute inset-0 bg-white/30 animate-[pulse_1s_infinite]"></div>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 </motion.div>
+               ))}
+            </div>
+            
+            <div className="mt-12 flex justify-center">
+              <Link href="/dashboard" className="px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 text-sm font-medium border border-white/10 transition-colors flex items-center gap-2">
+                Go to Dashboard <MoveRight className="w-4 h-4"/>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* --- PRICING --- */}
+      <section className="py-32 px-6 relative z-10 gsap-section">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">Simple, Transparent Pricing</h2>
+            <p className="text-gray-400 text-lg">Scale your accessibility efforts effortlessly.</p>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
              {[
-               { name: "Starter", price: "$0", desc: "For individuals", popular: false },
-               { name: "Professional", price: "$49", desc: "For creators & small teams", popular: true },
-               { name: "Enterprise", price: "Custom", desc: "For large organizations", popular: false }
+               { name: "Starter", price: "$0", desc: "Perfect for individuals and small projects.", popular: false, features: ["50 mins/month", "Standard Avatar", "720p Export", "Community Support"] },
+               { name: "Pro", price: "$49", desc: "For creators and accessibility professionals.", popular: true, features: ["500 mins/month", "Premium Avatars", "4K Export", "API Access", "Priority Support"] },
+               { name: "Enterprise", price: "Custom", desc: "Dedicated infrastructure for large organizations.", popular: false, features: ["Unlimited Processing", "Custom Avatar Integration", "SSO & Advanced Security", "SLA & 24/7 Support"] }
              ].map((p, i) => (
-               <div key={i} className={cn("glass-card p-8 rounded-3xl relative flex flex-col", p.popular ? "border-primary shadow-[0_0_30px_-5px_rgba(124,92,255,0.3)] scale-105 z-10" : "border-white/5")}>
-                 {p.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">MOST POPULAR</div>}
-                 <h3 className="text-xl font-bold mb-2">{p.name}</h3>
-                 <div className="text-4xl font-extrabold mb-2">{p.price}<span className="text-lg text-muted-foreground font-normal">/mo</span></div>
-                 <p className="text-muted-foreground mb-8">{p.desc}</p>
-                 <button className={cn("mt-auto py-3 rounded-xl font-bold transition", p.popular ? "bg-primary text-white hover:bg-primary/90" : "bg-white/10 hover:bg-white/20")}>
-                   Choose Plan
+               <div key={i} className={cn("glass p-8 rounded-[2.5rem] relative flex flex-col transition-all duration-300", p.popular ? "bg-[#0A1020]/90 border-electric-violet/50 shadow-[0_0_50px_-15px_rgba(124,92,255,0.4)] scale-105 z-20" : "bg-[#0A1020]/50 border-white/5 hover:border-white/20")}>
+                 {p.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-electric-violet to-cyan-glow text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">MOST POPULAR</div>}
+                 
+                 <h3 className="text-xl font-bold mb-2 text-white">{p.name}</h3>
+                 <p className="text-sm text-gray-400 mb-6 min-h-[40px]">{p.desc}</p>
+                 <div className="text-5xl font-extrabold mb-8 text-white">{p.price}<span className="text-lg text-gray-500 font-normal">/mo</span></div>
+                 
+                 <div className="space-y-4 mb-10 flex-1">
+                   {p.features.map((f, idx) => (
+                     <div key={idx} className="flex items-center gap-3 text-sm text-gray-300">
+                       <Zap className="w-4 h-4 text-cyan-glow shrink-0" /> {f}
+                     </div>
+                   ))}
+                 </div>
+                 
+                 <button className={cn("w-full py-4 rounded-xl font-bold transition-all duration-300", p.popular ? "bg-white text-black hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white hover:bg-white/15 border border-white/10")}>
+                   Get Started
                  </button>
                </div>
              ))}
           </div>
         </div>
-      </Section>
+      </section>
 
-      {/* --- SECTION 10: FINAL CTA --- */}
-      <Section className="px-6 pb-32">
-        <div className="max-w-5xl mx-auto relative rounded-3xl overflow-hidden p-16 text-center border border-primary/30">
-          <div className="absolute inset-0 animated-bg opacity-50 z-0"></div>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-0"></div>
+      {/* --- FINAL CTA --- */}
+      <section className="py-32 px-6 relative z-10 gsap-section">
+        <div className="max-w-6xl mx-auto relative rounded-[3rem] overflow-hidden p-16 md:p-24 text-center border border-white/10 shadow-2xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-electric-violet/20 via-background to-cyan-glow/20 z-0"></div>
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay z-0"></div>
           
           <div className="relative z-10 flex flex-col items-center">
-            <h2 className="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight">Make Every Conversation <br/> Accessible</h2>
-            <p className="text-xl text-white/80 max-w-2xl mb-10">
-              Bring AI-powered accessibility to your videos, meetings, classrooms, and communities today.
+            <h2 className="text-5xl md:text-7xl font-extrabold mb-8 tracking-tighter leading-tight text-white">
+              Ready to make the web <br/> <span className="bg-clip-text text-transparent bg-gradient-to-r from-electric-violet to-cyan-glow">truly accessible?</span>
+            </h2>
+            <p className="text-xl text-gray-400 max-w-2xl mb-12">
+              Join thousands of creators and enterprises using SignWave to break down communication barriers.
             </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/register" className="px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition shadow-xl">
-                Get Started Free
+            <div className="flex flex-wrap justify-center gap-4 w-full sm:w-auto">
+              <Link href="/register" className="w-full sm:w-auto px-10 py-5 bg-white text-black font-bold rounded-full hover:scale-105 transition-all shadow-[0_0_30px_rgba(255,255,255,0.4)] text-lg">
+                Start Creating Free
               </Link>
-              <button className="px-8 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary/90 transition shadow-xl">
-                Book a Demo
+              <button className="w-full sm:w-auto px-10 py-5 glass border border-white/20 text-white font-bold rounded-full hover:bg-white/10 transition-all text-lg">
+                Contact Sales
               </button>
             </div>
           </div>
         </div>
-      </Section>
+      </section>
 
     </div>
   );

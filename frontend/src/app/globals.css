@@ -1,72 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #050816;
-  --foreground: #ffffff;
-  --card: #0A1020;
-  --card-foreground: #ffffff;
-  --popover: #0A1020;
-  --popover-foreground: #ffffff;
-  --primary: #7C5CFF;
+  --background: #0B0D1A;
+  --foreground: #F1F5F9;
+  --sidebar: #0D0F1E;
+  --card: #111427;
+  --card-foreground: #F1F5F9;
+  --primary: #7B5CF5;
   --primary-foreground: #ffffff;
-  --secondary: #0A1020;
-  --secondary-foreground: #ffffff;
-  --muted: #0A1020;
-  --muted-foreground: #a1a1aa;
-  --accent: #3B82F6;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #1f2937;
-  --input: #1f2937;
-  --ring: #22D3EE;
+  --cyan: #22D3EE;
+  --green: #22C55E;
+  --red: #EF4444;
+  --amber: #F59E0B;
+  --muted-foreground: #6B7280;
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
+  --ring: #7B5CF5;
   --radius: 0.75rem;
-  
-  --color-electric-violet: #7C5CFF;
+  --color-electric-violet: #7B5CF5;
   --color-neon-blue: #3B82F6;
   --color-cyan-glow: #22D3EE;
-  --color-emerald-success: #10B981;
+  --color-emerald-success: #22C55E;
 }
 
 .dark {
-  --background: #050816;
-  --foreground: #ffffff;
-  --card: #0A1020;
-  --card-foreground: #ffffff;
-  --popover: #0A1020;
-  --popover-foreground: #ffffff;
-  --primary: #7C5CFF;
-  --primary-foreground: #ffffff;
-  --secondary: #0A1020;
-  --secondary-foreground: #ffffff;
-  --muted: #0A1020;
-  --muted-foreground: #a1a1aa;
-  --accent: #3B82F6;
-  --accent-foreground: #ffffff;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fafafa;
-  --border: #1f2937;
-  --input: #1f2937;
-  --ring: #22D3EE;
+  --background: #0B0D1A;
+  --foreground: #F1F5F9;
+  --card: #111427;
+  --primary: #7B5CF5;
+  --muted-foreground: #6B7280;
+  --border: rgba(255,255,255,0.06);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-card: var(--card);
   --color-primary: var(--primary);
-  --color-secondary: var(--secondary);
-  --color-accent: var(--accent);
-  --color-muted: var(--muted);
+  --color-cyan: var(--cyan);
+  --color-green: var(--green);
+  --color-red: var(--red);
+  --color-amber: var(--amber);
   --color-muted-foreground: var(--muted-foreground);
-  --color-destructive: var(--destructive);
   --color-border: var(--border);
-  --color-ring: var(--ring);
   --color-electric-violet: var(--color-electric-violet);
   --color-neon-blue: var(--color-neon-blue);
   --color-cyan-glow: var(--color-cyan-glow);
   --color-emerald-success: var(--color-emerald-success);
-  --radius-xl: var(--radius);
 }
+
+* { box-sizing: border-box; }
 
 body {
   background: var(--background);
@@ -75,85 +59,159 @@ body {
   overflow-x: hidden;
 }
 
-/* ── Glassmorphism ─────────────────────────────────────────── */
+/* ── Custom scrollbar ─────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(123,92,245,0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(123,92,245,0.6); }
+
+/* ── Glassmorphism ────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255,255,255,0.04);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.glass-card {
+  background: rgba(17,20,39,0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
-.dark .glass {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* ── Gradient text ─────────────────────────────────────────── */
+/* ── Gradient text ────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #7C5CFF 0%, #22D3EE 100%);
+  background: linear-gradient(135deg, #7B5CF5 0%, #22D3EE 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* ── Keyframe animations ───────────────────────────────────── */
+/* ── Keyframes ────────────────────────────────── */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0);   }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes slide-in-from-bottom {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0);   }
-}
-
 @keyframes fade-in-only {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
-/* ── Animation utility classes ─────────────────────────────── */
-.animate-fade-in {
-  animation: fade-in 0.6s ease both;
+@keyframes slide-in-from-bottom {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gradientBG {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes blink-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes wave-bar  { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1.0); } }
+@keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes float-avatar { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(123,92,245,0.3); }
+  50%       { box-shadow: 0 0 40px rgba(123,92,245,0.6); }
+}
+@keyframes stagger-in {
+  from { opacity: 0; transform: scale(0.85) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes waveform-bar {
+  0%, 100% { height: 4px; }
+  50%       { height: 20px; }
 }
 
-/* animate-in base — children specify what to animate */
+/* ── Animation utilities ──────────────────────── */
+.animate-fade-in      { animation: fade-in 0.6s ease both; }
+.animate-spin-slow    { animation: spin-slow 8s linear infinite; }
+.animate-blink-dot    { animation: blink-dot 1.2s ease-in-out infinite; }
+.animate-float-avatar { animation: float-avatar 4s ease-in-out infinite; }
+.animate-glow-pulse   { animation: glow-pulse 2.5s ease-in-out infinite; }
+.animate-stagger-in   { animation: stagger-in 0.4s ease both; }
 .animate-in {
   animation-duration: 0.35s;
   animation-timing-function: ease;
   animation-fill-mode: both;
 }
+.fade-in                { animation-name: fade-in-only; }
+.slide-in-from-bottom-2 { animation-name: slide-in-from-bottom; }
 
-.fade-in {
-  animation-name: fade-in-only;
+/* ── Waveform bars ────────────────────────────── */
+.wave-bar {
+  display: inline-block;
+  width: 3px;
+  border-radius: 2px;
+  background: #7B5CF5;
+  animation: wave-bar 0.8s ease-in-out infinite alternate;
+  transform-origin: bottom;
+}
+.wave-bar:nth-child(2)  { animation-delay: 0.10s; background: #9B7FFF; }
+.wave-bar:nth-child(3)  { animation-delay: 0.20s; }
+.wave-bar:nth-child(4)  { animation-delay: 0.30s; background: #22D3EE; }
+.wave-bar:nth-child(5)  { animation-delay: 0.40s; }
+.wave-bar:nth-child(6)  { animation-delay: 0.30s; background: #9B7FFF; }
+.wave-bar:nth-child(7)  { animation-delay: 0.20s; }
+.wave-bar:nth-child(8)  { animation-delay: 0.10s; background: #22D3EE; }
+.wave-bar:nth-child(9)  { animation-delay: 0.15s; }
+.wave-bar:nth-child(10) { animation-delay: 0.25s; background: #9B7FFF; }
+.wave-bar:nth-child(11) { animation-delay: 0.35s; }
+.wave-bar:nth-child(12) { animation-delay: 0.45s; background: #22D3EE; }
+
+/* ── Sidebar nav items ────────────────────────── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+}
+.nav-item:hover { color: #F1F5F9; background: rgba(123,92,245,0.08); }
+.nav-item.active {
+  color: #F1F5F9;
+  background: rgba(123,92,245,0.15);
+  border-left-color: #7B5CF5;
+}
+.nav-item.active svg { color: #7B5CF5; }
+
+/* ── Shimmer progress bar ─────────────────────── */
+.shimmer-bar {
+  background: linear-gradient(90deg, #7B5CF5 0%, #22D3EE 50%, #7B5CF5 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease infinite;
 }
 
-.slide-in-from-bottom-2 {
-  animation-name: slide-in-from-bottom;
+/* ── Card hover glow ──────────────────────────── */
+.card-hover { transition: all 0.25s ease; }
+.card-hover:hover {
+  border-color: rgba(123,92,245,0.3) !important;
+  box-shadow: 0 0 30px rgba(123,92,245,0.1);
+  transform: translateY(-1px);
 }
 
-/* ── Animated Gradient Background ───────────────────── */
-@keyframes gradientBG {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.animated-bg {
-  background: linear-gradient(270deg, #050816, #0A1020, #050816);
-  background-size: 600% 600%;
-  animation: gradientBG 12s ease infinite;
-}
-
+/* ── Aurora background ────────────────────────── */
 .aurora-bg {
-  background: radial-gradient(circle at 50% -20%, rgba(124, 92, 255, 0.15), rgba(5, 8, 22, 0) 50%),
-              radial-gradient(circle at 80% 50%, rgba(34, 211, 238, 0.1), rgba(5, 8, 22, 0) 50%);
+  background:
+    radial-gradient(circle at 50% -20%, rgba(123,92,245,0.15), rgba(11,13,26,0) 50%),
+    radial-gradient(circle at 80% 50%, rgba(34,211,238,0.08), rgba(11,13,26,0) 50%);
 }
 
-.glass-card {
-  background: rgba(10, 16, 32, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+/* ── Waveform row ─────────────────────────────── */
+.waveform-bar {
+  width: 3px;
+  border-radius: 3px;
+  background: #7B5CF5;
+  animation: waveform-bar 0.6s ease-in-out infinite alternate;
 }

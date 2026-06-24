@@ -3,7 +3,7 @@ import os
 import torch
 import spacy
 import re
-import google.generativeai as genai
+from google import genai
 from moviepy import VideoFileClip
 
 # Initialize SpaCy for ASL linguistic reordering
@@ -21,17 +21,20 @@ class SignWaveProcessor:
         # Initialize Gemini if API key is in environment
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
-            genai.configure(api_key=api_key)
-            self.llm = genai.GenerativeModel('gemini-1.5-pro')
-            print("Gemini initialized successfully with gemini-1.5-pro.")
+            self.llm_client = genai.Client(api_key=api_key)
+            self.llm_model_name = 'gemini-2.5-flash'
+            print(f"Gemini initialized successfully with {self.llm_model_name}.")
         else:
             print("WARNING: GEMINI_API_KEY not found. LLM translation will be disabled.")
-            self.llm = None
+            self.llm_client = None
 
     async def extract_audio(self, video_path: str, audio_path: str):
-        clip = VideoFileClip(video_path)
-        clip.audio.write_audiofile(audio_path, logger=None)
-        clip.close()
+        import asyncio
+        def _extract():
+            clip = VideoFileClip(video_path)
+            clip.audio.write_audiofile(audio_path, logger=None)
+            clip.close()
+        await asyncio.to_thread(_extract)
 
     async def transcribe(self, audio_path: str):
         if self.model is None:
@@ -47,9 +50,10 @@ class SignWaveProcessor:
         except Exception as e:
             print(f"Failed to append imageio-ffmpeg to PATH: {e}")
 
+        import asyncio
         print(f"Starting transcription...")
         fp16 = self.device != "cpu"
-        return self.model.transcribe(audio_path, fp16=fp16)
+        return await asyncio.to_thread(self.model.transcribe, audio_path, fp16=fp16)
 
     async def translate_to_gloss(self, text: str):
         """
@@ -58,14 +62,17 @@ class SignWaveProcessor:
         """
         
         # Phase 1: Try LLM (State-of-the-art Translation)
-        if self.llm:
+        if self.llm_client:
             try:
                 prompt = (
                     "Translate the following English sentence into American Sign Language (ASL) Gloss. "
                     "Use uppercase, remove small words like 'is', 'am', 'the', and use Topic-Comment structure. "
                     f"English: '{text}'"
                 )
-                response = self.llm.generate_content(prompt)
+                response = self.llm_client.models.generate_content(
+                    model=self.llm_model_name,
+                    contents=prompt
+                )
                 return response.text.upper().replace('.', '').split()
             except Exception as e:
                 print(f"LLM Translation failed: {e}")
