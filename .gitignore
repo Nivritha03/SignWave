@@ -5,6 +5,8 @@ backend/__pycache__/
 backend/*.pyc
 backend/uploads/
 backend/processed/
+backend/signwave.db
+backend/error_log.txt
 
 # Node
 frontend/node_modules/

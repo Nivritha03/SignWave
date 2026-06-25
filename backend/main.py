@@ -7,8 +7,10 @@ from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Depends, HTTPExc
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
-from websocket_asr import router as ws_router
+load_dotenv()
+
 from database import get_db, SessionLocal, Job as DBJob
 from processor import SignWaveProcessor
 
@@ -17,7 +19,7 @@ processor = SignWaveProcessor()
 
 
 app = FastAPI(title="SignWave AI Backend")
-app.include_router(ws_router)
+
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -104,7 +106,7 @@ async def upload_video(
     db.commit()
 
     background_tasks.add_task(process_video, job_id, file_path)
-    return {"job_id": job_id}
+    return {"job_id": job_id, "status": "uploaded"}
 
 
 @app.post("/api/upload/video")
@@ -140,7 +142,7 @@ async def upload_audio_api(
     db.commit()
 
     background_tasks.add_task(process_video, job_id, file_path)
-    return {"job_id": job_id}
+    return {"job_id": job_id, "status": "uploaded"}
 
 
 from pydantic import BaseModel
@@ -176,7 +178,7 @@ async def upload_link_api(
     db.commit()
     
     background_tasks.add_task(process_link, job_id, url, file_path)
-    return {"job_id": job_id}
+    return {"job_id": job_id, "status": "uploaded"}
 
 
 
@@ -193,7 +195,155 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
         "transcript": job.transcript,
         "captions": job.captions,
         "video_url": job.video_url,
+        "confidence": job.confidence,
+        "language": job.language,
+        "duration": job.duration,
         "created_at": job.created_at.isoformat() if job.created_at else None,
+    }
+
+@app.get("/transcript/{job_id}")
+async def get_transcript(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(DBJob).filter(DBJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"transcript": job.transcript}
+
+@app.get("/gloss/{job_id}")
+async def get_gloss(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(DBJob).filter(DBJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    # Return array of words from captions
+    gloss_list = []
+    if job.captions:
+        captions = json.loads(job.captions) if isinstance(job.captions, str) else job.captions
+        for cap in captions:
+            if "gloss" in cap:
+                gloss_list.extend(cap["gloss"])
+    return {"gloss": gloss_list}
+
+@app.get("/status/{job_id}")
+async def get_status_endpoint(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(DBJob).filter(DBJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"status": job.status, "progress": job.progress}
+
+@app.get("/video/{job_id}")
+async def get_video_endpoint(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(DBJob).filter(DBJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"video_url": job.video_url}
+
+
+# ---------------------------------------------------------------------------
+# Animation Endpoint — returns clip references for each gloss token
+# ---------------------------------------------------------------------------
+
+# A curated mapping of common ASL gloss tokens → animation clip names.
+# If a clip file exists in /public/animations/, it will be referenced.
+# Otherwise, the avatar will play its idle pose.
+GLOSS_CLIP_MAP: dict = {
+    "HELLO": "hello",
+    "GOODBYE": "goodbye",
+    "THANK": "thank_you",
+    "THANK_YOU": "thank_you",
+    "PLEASE": "please",
+    "SORRY": "sorry",
+    "HELP": "help",
+    "YES": "yes",
+    "NO": "no",
+    "NAME": "name",
+    "LEARN": "learn",
+    "UNDERSTAND": "understand",
+    "WELCOME": "welcome",
+    "TODAY": "today",
+    "TOMORROW": "tomorrow",
+    "YESTERDAY": "yesterday",
+    "MORNING": "morning",
+    "NIGHT": "night",
+    "GOOD": "good",
+    "BAD": "bad",
+    "HAPPY": "happy",
+    "SAD": "sad",
+    "LOVE": "love",
+    "FAMILY": "family",
+    "FRIEND": "friend",
+    "WORK": "work",
+    "SCHOOL": "school",
+    "LECTURE": "lecture",
+    "SIGN": "sign",
+    "LANGUAGE": "language",
+    "INTERPRET": "interpret",
+    "TRANSLATE": "translate",
+}
+
+@app.get("/animation/{job_id}")
+async def get_animation(job_id: str, db: Session = Depends(get_db)):
+    """Returns a list of {gloss, clip} pairs for the job."""
+    job = db.query(DBJob).filter(DBJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status != "completed" or not job.captions:
+        return {"animations": [], "status": job.status}
+
+    captions = job.captions if isinstance(job.captions, list) else json.loads(job.captions)
+    animations = []
+    for cap in captions:
+        for gloss_word in cap.get("gloss", []):
+            clip_name = GLOSS_CLIP_MAP.get(gloss_word.upper(), None)
+            animations.append({
+                "gloss": gloss_word,
+                "clip": clip_name,  # None means use idle/default pose
+                "start": cap.get("start", 0),
+                "end": cap.get("end", 0),
+            })
+    return {"animations": animations}
+
+
+# ---------------------------------------------------------------------------
+# Generate-Motion Stub — architecture hook for future trained model
+# ---------------------------------------------------------------------------
+
+class GenerateMotionRequest(BaseModel):
+    gloss: list  # e.g. ["TODAY", "LECTURE", "WELCOME"]
+    avatar: str = "alex"  # "alex" or "maya"
+
+@app.post("/generate-motion")
+async def generate_motion(req: GenerateMotionRequest):
+    """
+    Stub endpoint: translates gloss tokens into animation clip references.
+    Future: replace body with call to trained MotionGPT / Diffusion model.
+    """
+    result = []
+    for word in req.gloss:
+        clip = GLOSS_CLIP_MAP.get(word.upper(), None)
+        result.append({"gloss": word, "clip": clip, "source": "clip_map"})
+    return {
+        "avatar": req.avatar,
+        "motions": result,
+        "note": "Using pre-mapped animation clips. Connect a trained model here for generative pose data."
+    }
+
+
+# ---------------------------------------------------------------------------
+# API Status / Health
+# ---------------------------------------------------------------------------
+
+@app.get("/api/status")
+async def api_status():
+    """Health check and pipeline capability summary."""
+    gemini_enabled = bool(os.getenv("GEMINI_API_KEY"))
+    return {
+        "status": "ok",
+        "pipeline": {
+            "speech_recognition": "whisper-base",
+            "gloss_translation": "gemini-2.5-flash" if gemini_enabled else "spacy-fallback",
+            "motion_generation": "clip_map_stub",
+            "avatar_rigging": "react-three-fiber",
+        },
+        "gemini_llm": gemini_enabled,
     }
 
 
@@ -201,11 +351,16 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
 async def get_file(file_id: str):
     # Try with the file_id as-is (may already include extension)
     if "." in file_id:
+        # Case-insensitive search in uploads directory
         path = os.path.join(UPLOAD_DIR, file_id)
         if os.path.exists(path):
             return FileResponse(path)
+        # Try case variants
+        for fname in os.listdir(UPLOAD_DIR):
+            if fname.lower() == file_id.lower():
+                return FileResponse(os.path.join(UPLOAD_DIR, fname))
     else:
-        for ext in [".mp4", ".mp3", ".mkv", ".mov", ".webm"]:
+        for ext in [".mp4", ".MP4", ".mp3", ".mkv", ".mov", ".webm"]:
             path = os.path.join(UPLOAD_DIR, f"{file_id}{ext}")
             if os.path.exists(path):
                 return FileResponse(path)
@@ -280,16 +435,9 @@ async def process_video(job_id: str, file_path: str):
             if is_audio:
                 audio_path = file_path
             else:
-                audio_path = (
-                    file_path
-                    .replace(".mp4", ".mp3")
-                    .replace(".mkv", ".mp3")
-                    .replace(".mov", ".mp3")
-                    .replace(".webm", ".mp3")
-                    .replace(".avi", ".mp3")
-                )
-                if audio_path == file_path:
-                    audio_path = file_path + ".mp3"
+                # Use os.path.splitext to handle both .mp4 and .MP4
+                base, _ = os.path.splitext(file_path)
+                audio_path = base + ".wav"
 
                 job.status = "extracting_audio"
                 job.progress = 10
@@ -300,15 +448,20 @@ async def process_video(job_id: str, file_path: str):
             job.progress = 40
             db.commit()
             result = await processor.transcribe(audio_path)
+            
+            # Update job with stats
+            if "stats" in result:
+                job.confidence = result["stats"]["confidence"]
+                job.language = result["stats"]["language"]
+                job.duration = result["stats"]["duration"]
+                
         except Exception as proc_err:
-            print(f"Error processing video file {job_id}: {proc_err}. Falling back to default transcript.")
-            result = {
-                "text": "Hello, welcome to SignWave. We make sign language translation easy.",
-                "segments": [
-                    {"start": 0.0, "end": 2.5, "text": "Hello, welcome to SignWave."},
-                    {"start": 2.5, "end": 5.0, "text": "We make sign language translation easy."}
-                ]
-            }
+            import traceback
+            with open("error_log.txt", "a") as f:
+                f.write(f"Error processing video file {job_id}: {proc_err}\n")
+                f.write(traceback.format_exc() + "\n")
+            print(f"Error processing video file {job_id}: {proc_err}.")
+            raise proc_err
 
         job.status = "processing_gloss"
         job.progress = 70
@@ -380,10 +533,16 @@ async def process_link(job_id: str, url: str, file_path: str):
                     download_success = True
                     print(f"yt-dlp download succeeded: {audio_path}")
                 else:
+                    with open("error_log.txt", "a") as f:
+                        f.write(f"yt-dlp ran but output not found. stderr: {result_proc.stderr}\n")
                     print(f"yt-dlp ran but output not found. stderr: {result_proc.stderr}")
             else:
+                with open("error_log.txt", "a") as f:
+                    f.write(f"yt-dlp failed (rc={result_proc.returncode}): {result_proc.stderr}\n")
                 print(f"yt-dlp failed (rc={result_proc.returncode}): {result_proc.stderr}")
         except Exception as yt_err:
+            with open("error_log.txt", "a") as f:
+                f.write(f"yt-dlp strategy failed: {yt_err}\n")
             print(f"yt-dlp strategy failed: {yt_err}")
 
         # --- Strategy 2: httpx direct download (fallback for plain file URLs) ---
@@ -398,6 +557,9 @@ async def process_link(job_id: str, url: str, file_path: str):
                     with open(file_path, "wb") as f:
                         with httpx.stream("GET", url, follow_redirects=True, timeout=120.0) as r:
                             r.raise_for_status()
+                            content_type = r.headers.get("content-type", "")
+                            if "text/html" in content_type:
+                                raise Exception(f"URL points to an HTML page, not a direct media file. ({content_type})")
                             for chunk in r.iter_bytes():
                                 f.write(chunk)
                 await asyncio.to_thread(download_httpx)
@@ -418,7 +580,7 @@ async def process_link(job_id: str, url: str, file_path: str):
                     if is_audio:
                         audio_path = file_path
                     else:
-                        audio_path = file_path + ".mp3"
+                        audio_path = file_path + ".wav"
                         await processor.extract_audio(file_path, audio_path)
 
                 job.status = "transcribing"
@@ -426,20 +588,26 @@ async def process_link(job_id: str, url: str, file_path: str):
                 db.commit()
                 result = await processor.transcribe(audio_path)
                 print(f"Transcription successful for job {job_id}")
+                
+                # Update job with stats
+                if "stats" in result:
+                    job.confidence = result["stats"]["confidence"]
+                    job.language = result["stats"]["language"]
+                    job.duration = result["stats"]["duration"]
+                    
             except Exception as proc_err:
+                import traceback
+                with open("error_log.txt", "a") as f:
+                    f.write(f"Error processing downloaded file for job {job_id}: {proc_err}\n")
+                    f.write(traceback.format_exc() + "\n")
                 print(f"Error processing downloaded file for job {job_id}: {proc_err}")
+                raise proc_err
 
-        # --- Fallback: use a demonstration transcript ---
         if result is None:
-            print(f"All download strategies failed for {url}. Using demonstration transcript.")
-            result = {
-                "text": "Hello, welcome to SignWave. We make sign language translation easy and accessible for everyone.",
-                "segments": [
-                    {"start": 0.0, "end": 2.5, "text": "Hello, welcome to SignWave."},
-                    {"start": 2.5, "end": 5.0, "text": "We make sign language translation easy."},
-                    {"start": 5.0, "end": 8.0, "text": "Accessible for everyone."},
-                ]
-            }
+            import traceback
+            with open("error_log.txt", "a") as f:
+                f.write(f"All download strategies failed for {url}.\n")
+            raise Exception("Failed to download or transcribe media")
 
         job.status = "processing_gloss"
         job.progress = 70

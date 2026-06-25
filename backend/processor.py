@@ -30,30 +30,83 @@ class SignWaveProcessor:
 
     async def extract_audio(self, video_path: str, audio_path: str):
         import asyncio
+        import subprocess
         def _extract():
-            clip = VideoFileClip(video_path)
-            clip.audio.write_audiofile(audio_path, logger=None)
-            clip.close()
+            import imageio_ffmpeg
+            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+            try:
+                subprocess.run([
+                    ffmpeg_exe, "-i", video_path, "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1", "-y", audio_path
+                ], check=True, capture_output=True, text=True)
+            except subprocess.CalledProcessError as e:
+                raise Exception(f"ffmpeg error: {e.stderr}")
         await asyncio.to_thread(_extract)
 
     async def transcribe(self, audio_path: str):
         if self.model is None:
-            print(f"Loading Whisper 'small' model on {self.device}...")
-            self.model = whisper.load_model("small", device=self.device)
+            import asyncio
+            print(f"Loading Whisper 'base' model on {self.device}...")
+            self.model = await asyncio.to_thread(whisper.load_model, "base", device=self.device)
+
         
-        # Ensure ffmpeg bin folder is in PATH for Whisper to call it
+        # Monkey-patch Whisper's load_audio to use imageio_ffmpeg directly
         try:
             import imageio_ffmpeg
-            ffmpeg_dir = os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
-            if ffmpeg_dir not in os.environ["PATH"]:
-                os.environ["PATH"] += os.path.pathsep + ffmpeg_dir
+            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+            
+            import whisper.audio
+            if not hasattr(whisper.audio, "_patched_for_ffmpeg"):
+                original_load_audio = whisper.audio.load_audio
+                def custom_load_audio(file: str, sr: int = whisper.audio.SAMPLE_RATE):
+                    import subprocess
+                    import numpy as np
+                    cmd = [
+                        ffmpeg_exe,
+                        "-nostdin",
+                        "-threads", "0",
+                        "-i", file,
+                        "-f", "s16le",
+                        "-ac", "1",
+                        "-acodec", "pcm_s16le",
+                        "-ar", str(sr),
+                        "-"
+                    ]
+                    try:
+                        out = subprocess.run(cmd, capture_output=True, check=True).stdout
+                    except subprocess.CalledProcessError as e:
+                        raise RuntimeError(f"Failed to load audio: {e.stderr.decode() if e.stderr else str(e)}") from e
+                    
+                    return np.frombuffer(out, np.int16).flatten().astype(np.float32) / 32768.0
+
+                whisper.audio.load_audio = custom_load_audio
+                whisper.load_audio = custom_load_audio
+                whisper.audio._patched_for_ffmpeg = True
+                print("Successfully monkey-patched Whisper to use imageio_ffmpeg.")
         except Exception as e:
-            print(f"Failed to append imageio-ffmpeg to PATH: {e}")
+            print(f"Failed to monkey-patch Whisper: {e}")
 
         import asyncio
+        import math
         print(f"Starting transcription...")
         fp16 = self.device != "cpu"
-        return await asyncio.to_thread(self.model.transcribe, audio_path, fp16=fp16)
+        result = await asyncio.to_thread(self.model.transcribe, audio_path, fp16=fp16)
+        
+        # Calculate stats
+        segments = result.get("segments", [])
+        if segments:
+            duration = segments[-1].get("end", 0)
+            avg_logprob = sum(s.get("avg_logprob", 0) for s in segments) / len(segments)
+            confidence = f"{math.exp(avg_logprob) * 100:.1f}%"
+        else:
+            duration = 0
+            confidence = "0%"
+        
+        result["stats"] = {
+            "duration": duration,
+            "confidence": confidence,
+            "language": result.get("language", "unknown").upper()
+        }
+        return result
 
     async def translate_to_gloss(self, text: str):
         """
@@ -65,15 +118,22 @@ class SignWaveProcessor:
         if self.llm_client:
             try:
                 prompt = (
-                    "Translate the following English sentence into American Sign Language (ASL) Gloss. "
-                    "Use uppercase, remove small words like 'is', 'am', 'the', and use Topic-Comment structure. "
-                    f"English: '{text}'"
+                    "You are an expert ASL translator. Translate the following English sentence into American Sign Language (ASL) Gloss. "
+                    "RULES:\n"
+                    "1. Use uppercase.\n"
+                    "2. Remove small words like 'is', 'am', 'the'.\n"
+                    "3. Use Topic-Comment structure.\n"
+                    "4. Output ONLY the resulting gloss tokens separated by spaces. Do not include any explanations, conversational text, options, or Markdown formatting.\n\n"
+                    f"English: '{text}'\n"
+                    "ASL Gloss:"
                 )
                 response = self.llm_client.models.generate_content(
                     model=self.llm_model_name,
                     contents=prompt
                 )
-                return response.text.upper().replace('.', '').split()
+                import re
+                clean_text = re.sub(r'[^\w\s-]', '', response.text)
+                return clean_text.upper().split()
             except Exception as e:
                 print(f"LLM Translation failed: {e}")
 

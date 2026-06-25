@@ -25,6 +25,9 @@ class Job(Base):
     transcript = Column(String, nullable=True)
     captions = Column(JSON, nullable=True)
     video_url = Column(String, nullable=True)
+    confidence = Column(String, nullable=True)
+    language = Column(String, nullable=True)
+    duration = Column(Integer, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     
